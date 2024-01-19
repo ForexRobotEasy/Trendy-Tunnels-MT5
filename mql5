@@ -1,0 +1,133 @@
+
+//+------------------------------------------------------------------+
+//|                                                     Trendy Tunnels MT5                                                     |
+//|                                    Developed by Forex Robot Easy Team (forexroboteasy.com)                                    |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int MA1_Period = 20; // Period for the first moving average
+input int MA2_Period = 40; // Period for the second moving average
+input int ADX_Period = 14; // Period for the ADX indicator
+input double ADX_Threshold = 25.0; // ADX threshold for trend confirmation
+
+// Define global variables
+double upperTunnel; // Upper boundary of the tunnels
+double lowerTunnel; // Lower boundary of the tunnels
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                            OnTick() Function                            |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Calculate the moving average values
+   double MA1_Value = iMA(NULL, 0, MA1_Period, 0, MODE_SMA, PRICE_CLOSE, 0);
+   double MA2_Value = iMA(NULL, 0, MA2_Period, 0, MODE_SMA, PRICE_CLOSE, 0);
+   
+   // Calculate the upper and lower boundaries of the tunnels
+   upperTunnel = MA1_Value + (MA2_Value - MA1_Value) / 2;
+   lowerTunnel = MA1_Value - (MA2_Value - MA1_Value) / 2;
+   
+   // Retrieve ADX indicator value
+   double ADX_Value = iADX(NULL, 0, ADX_Period, PRICE_CLOSE, MODE_MAIN, 0);
+   
+   // Check for trend confirmation
+   bool isTrendConfirmed = ADX_Value > ADX_Threshold;
+   
+   // Check if price is above the upper tunnel
+   if (Close[0] > upperTunnel && isTrendConfirmed)
+   {
+      // Generate trade signal to go long
+      TradeSignal('BUY');
+   }
+   // Check if price is below the lower tunnel
+   else if (Close[0] < lowerTunnel && isTrendConfirmed)
+   {
+      // Generate trade signal to go short
+      TradeSignal('SELL');
+   }
+   
+   // Check for open trades
+   if (OrdersTotal() > 0)
+   {
+      // Adjust stop-loss and take-profit levels
+      AdjustTradeLevels();
+      
+      // Check for trade closure conditions
+      if (IsTradeClosureConditionMet())
+      {
+         CloseOpenTrades();
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                          TradeSignal() Function                          |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void TradeSignal(string signal)
+{
+   // Implement trade entry logic based on the identified trend
+   if (signal == 'BUY')
+   {
+      // Open a long position
+      OrderSend(Symbol(), OP_BUY, 0.01, Ask, 10, 0, 0, 'Buy', 0, 0, Green);
+   }
+   else if (signal == 'SELL')
+   {
+      // Open a short position
+      OrderSend(Symbol(), OP_SELL, 0.01, Bid, 10, 0, 0, 'Sell', 0, 0, Red);
+   }
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                       AdjustTradeLevels() Function                       |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void AdjustTradeLevels()
+{
+   // Implement trade management logic to adjust stop-loss and take-profit levels
+   for (int i = 0; i < OrdersTotal(); i++)
+   {
+      if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         // Adjust stop-loss level
+         OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble(upperTunnel, Digits), OrderTakeProfit(), 0, Green);
+         
+         // Adjust take-profit level
+         OrderModify(OrderTicket(), OrderOpenPrice(), OrderStopLoss(), NormalizeDouble(lowerTunnel, Digits), 0, Red);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                    IsTradeClosureConditionMet() Function                    |
+//|                                                                  |
+//+------------------------------------------------------------------+
+bool IsTradeClosureConditionMet()
+{
+   // Implement trade closure conditions
+   // For example, check for trend reversal or target achieved
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                          CloseOpenTrades() Function                          |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void CloseOpenTrades()
+{
+   // Close all open trades
+   for (int i = 0; i < OrdersTotal(); i++)
+   {
+      if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+      {
+         OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), 10, Red);
+      }
+   }
+}
